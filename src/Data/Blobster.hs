@@ -47,7 +47,7 @@ instance Show BlobID where
     where (p,ps) = innerPath bid
 
 instance Show ObjectID where
-  show oid = mconcat ["ObjectID", "\"", p, ps, "\""]
+  show oid = mconcat ["ObjectID ", "\"", p, ps, "\""]
     where (p,ps) = innerPath oid
 
 instance InnerPath BlobID where
