@@ -1,6 +1,15 @@
 {-# Language DeriveGeneric #-}
-module Data.Blobster where
+module Data.Blobster ( BlobID
+                     , ObjectID
+                     , Blobster
+                     , defBlobster
+                     , makeDir
+                     , getObject, putObject, getBlob, putBlob
+                     , makeObjectID, makeBlobID
+                     ) where
 
+import Control.Applicative
+import Control.Monad
 import Crypto.Hash
 import Data.ByteString (ByteString)
 import Data.List (splitAt)
@@ -27,11 +36,19 @@ newtype ObjectID = ObjectID ByteString
                    deriving (Eq,Ord,Generic)
 
 newtype ObjectRef = ObjectRef BlobID
-                    deriving (Eq,Ord,Generic)
+                    deriving (Show,Eq,Ord,Generic)
 
 instance Serialize BlobID
 instance Serialize ObjectID
 instance Serialize ObjectRef
+
+instance Show BlobID where
+  show bid = mconcat ["BlobID ", "\"", p, ps, "\""]
+    where (p,ps) = innerPath bid
+
+instance Show ObjectID where
+  show oid = mconcat ["ObjectID", "\"", p, ps, "\""]
+    where (p,ps) = innerPath oid
 
 instance InnerPath BlobID where
   innerPath (BlobID b) = splitAt 2 b16
@@ -44,7 +61,7 @@ instance InnerPath ObjectID where
 data Blobster = Blobster { prefixPath :: FilePath
                          , prefixBlob :: FilePath
                          , prefixRef  :: FilePath
-                         }
+                         } deriving (Show)
 
 defBlobster :: FilePath -> Blobster
 defBlobster p = Blobster { prefixPath = p
@@ -61,8 +78,9 @@ makeDir pref = do
 
 putObject :: Serialize a => Blobster -> ObjectID -> a -> IO BlobID
 putObject cfg oid o = do
+  -- FIXME: exception handling
   bid <- putBlob cfg o
-  _   <- putBlob' cfg (prefixRef cfg) oid (S.encode (ObjectRef bid))
+  _   <- putBlob' cfg True (prefixRef cfg) oid (S.encode (ObjectRef bid))
   return bid
 
 getObject :: Serialize a => Blobster -> ObjectID -> IO (Either String a)
@@ -75,8 +93,8 @@ getObject cfg oid = do
 putBlob :: Serialize a => Blobster -> a -> IO BlobID
 putBlob cfg x = do
   let blob = S.encode x
-  let blobid = mkBlobId blob
-  putBlob' cfg (prefixBlob cfg) blobid blob
+  let blobid = makeBlobID blob
+  putBlob' cfg False (prefixBlob cfg) blobid blob
   return blobid
 
 getBlob :: Serialize a => Blobster -> BlobID -> IO (Either String a)
@@ -89,8 +107,8 @@ getBlob' :: (Serialize a, InnerPath oid)
          -> IO (Either String a)
 
 getBlob' cfg p oid = do
-  let (p,fname) = innerPath oid
-  let path = p </> p </> fname
+  let (pp,fname) = innerPath oid
+  let path = p </> pp </> fname
   ex <- doesFileExist path
   case ex of
     False -> return (Left (mconcat ["not exists: ", path] ))
@@ -98,18 +116,30 @@ getBlob' cfg p oid = do
 
 putBlob' :: InnerPath oid
          => Blobster
+         -> Bool
          -> FilePath
          -> oid
          -> ByteString
          -> IO ()
 
-putBlob' cfg pref oid blob = do
+putBlob' cfg ow pref oid blob = do
   let (p,fname) = innerPath oid
-  let pp = (prefixPath cfg) </> p
+  let pp = pref </> p
+  let path = pp </> fname
   createDirectoryIfMissing True pp
-  BS.writeFile (pp </> fname) blob
+  write <- if ow
+             then return True
+             else not <$> doesFileExist path
 
-mkBlobId :: ByteString -> BlobID
-mkBlobId bs = BlobID bytes
+  when write $ BS.writeFile path blob
+
+makeObjectID :: Serialize a => a -> ObjectID
+makeObjectID o = ObjectID (hashKey (S.encode o))
+
+makeBlobID :: ByteString -> BlobID
+makeBlobID bs = BlobID (hashKey bs)
+
+hashKey :: ByteString -> ByteString
+hashKey bs = bytes
   where bytes = BS.pack (BA.unpack (hash bs :: Digest SHA1))
 
