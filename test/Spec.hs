@@ -5,13 +5,20 @@ import Data.Blobster
 import Data.Either
 import Data.ByteString (ByteString)
 import Control.Monad
+import System.IO.Temp
+import Control.Concurrent
+
+import Test.HUnit.Base
 
 import qualified Data.ByteString.Char8 as BS
 
-main :: IO ()
-main = do
-  cfg <- makeDir "db"
-  print cfg
+
+testBasic1 :: FilePath -> IO ()
+testBasic1 dir = do
+
+  putStrLn "testBasic1"
+
+  cfg <- makeDir dir
 
   let keys =  fmap makeObjectID ['A'..'Z']
 
@@ -21,13 +28,40 @@ main = do
 
   restored <- mapM (getObject cfg)  keys >>= return . rights :: IO [Int]
 
-  mapM_ print (zip (fmap snd kv) restored)
+  assertEqual "seq-len-1" (length kv) (length restored)
 
-  let j = "JOPAKITA" :: ByteString
+  mapM_ (uncurry (assertEqual "")) (zip (fmap snd kv) restored)
+
+  let j = "SOMERANDOMTESTSTRING" :: ByteString
   bid <- putBlob cfg j
-  print bid
   j' <- getBlob cfg bid :: IO (Either String ByteString)
 
-  print (j, j')
+  assertEqual "" (Right j) j'
 
-  print "wut"
+testBasic2 :: FilePath -> IO ()
+testBasic2 dir = do
+  putStrLn "testBasic2"
+
+  cfg <- makeDir dir
+
+  let iis = [0..30000] :: [Int]
+
+  bids <- forM iis $ \i -> do
+    putBlob cfg i
+
+  ee <- mapM (getBlob cfg) bids
+
+  forM_ (zip (fmap Right iis) ee) $ \(e,r) ->
+    assertEqual "" e r
+
+  return ()
+
+main :: IO ()
+main = do
+
+  putStrLn ""
+  withSystemTempDirectory "blobtest" $ \dir -> do
+    testBasic1 dir
+    testBasic2 dir
+
+
