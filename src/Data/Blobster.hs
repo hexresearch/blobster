@@ -1,6 +1,6 @@
 {-# Language DeriveGeneric #-}
 module Data.Blobster ( BlobID
-                     , ObjectID
+                     , ObjectID(..)
                      , Blobster
                      , defBlobster
                      , makeDir
