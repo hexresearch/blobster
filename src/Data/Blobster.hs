@@ -1,5 +1,5 @@
 {-# Language DeriveGeneric #-}
-module Data.Blobster ( BlobID
+module Data.Blobster ( BlobID(..)
                      , ObjectID(..)
                      , Blobster
                      , defBlobster
@@ -29,10 +29,10 @@ import qualified Data.Serialize as S
 class InnerPath a where
   innerPath :: a -> (FilePath, FilePath)
 
-newtype BlobID = BlobID ByteString
+newtype BlobID = BlobID { blobID :: ByteString }
                  deriving (Eq,Ord,Generic)
 
-newtype ObjectID = ObjectID ByteString
+newtype ObjectID = ObjectID { objectID :: ByteString }
                    deriving (Eq,Ord,Generic)
 
 newtype ObjectRef = ObjectRef BlobID
