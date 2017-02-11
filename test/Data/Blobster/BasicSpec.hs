@@ -1,14 +1,19 @@
 {-# Language ScopedTypeVariables #-}
 {-# Language DeriveGeneric #-}
+{-# Language OverloadedStrings #-}
 module Data.Blobster.BasicSpec (main, spec) where
 
 import Data.Blobster
 
 import Control.Exception
 import Control.Monad
-import System.IO.Temp
+import Data.ByteString (ByteString)
 import Data.Serialize
+import Data.String
 import GHC.Generics
+import System.IO.Temp
+
+import qualified Data.ByteString as BS
 
 import Test.Hspec
 import Test.QuickCheck
@@ -26,6 +31,9 @@ data CustomDataExample = CustomDataExample { name :: String
 
 instance Serialize CustomDataExample
 instance Serialize CustomEnum
+
+instance Arbitrary ObjectID where
+  arbitrary = makeObjectID <$> (BS.pack <$> arbitrary)
 
 instance Arbitrary CustomEnum where
   arbitrary = arbitraryBoundedEnum
@@ -63,6 +71,40 @@ spec = around withTempDb $ do
               bid <- putBlob db c
               c1 <- getBlob db bid
               c1 `shouldBe` (Right c)
+
+  describe "basic-4" $ do
+      it "Writes/reads a single indexed object" $ \db -> do
+        oid <- generate arbitrary :: IO ObjectID
+        o <- generate arbitrary :: IO CustomDataExample
+        putObject db oid o
+        o' <- getObject db oid :: IO (Either String CustomDataExample)
+        o' `shouldBe` (Right o)
+
+  describe "basic-5" $ do
+      it "Writes/reads a lot of indexed objects" $ \db -> do
+        replicateM_ 100 $ do
+          oid <- generate arbitrary :: IO ObjectID
+          o <- generate arbitrary :: IO CustomDataExample
+          putObject db oid o
+          o' <- getObject db oid :: IO (Either String CustomDataExample)
+          o' `shouldBe` (Right o)
+
+  describe "basic-5" $ do
+      it "Creates objects in the first db and moves them to the new db" $ \db -> do
+        a <- replicateM 1000 $ do
+          c <- generate arbitrary :: IO CustomDataExample
+          bid <- putBlob db c
+          return (bid,c)
+
+        withTempDb $ \db1 -> do
+          forM_ a $ \(b,_) -> do
+            xferBlob db db1 b
+
+          o2 <- mapM (getBlob db1 . fst) a
+          let o1 = fmap (Right . snd) a
+
+          o2 `shouldBe` o1
+
 
 main :: IO ()
 main = hspec spec

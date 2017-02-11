@@ -4,7 +4,7 @@ module Data.Blobster ( BlobID(..)
                      , Blobster
                      , defBlobster
                      , makeDir
-                     , getObject, putObject, getBlob, putBlob
+                     , getObject, putObject, getBlob, putBlob, xferBlob
                      , makeObjectID, makeBlobID
                      ) where
 
@@ -100,6 +100,18 @@ putBlob cfg x = do
 getBlob :: Serialize a => Blobster -> BlobID -> IO (Either String a)
 getBlob cfg bid = getBlob' cfg (prefixBlob cfg) bid
 
+xferBlob :: InnerPath a => Blobster -> Blobster -> a -> IO ()
+xferBlob db1 db2 bid = do
+  let from = blobPath db1 (prefixBlob db1) bid
+  let to   = blobPath db2 (prefixBlob db2) bid
+  createDirectoryIfMissing True (takeDirectory to)
+  copyFileWithMetadata from to
+
+blobPath :: InnerPath a => Blobster -> FilePath -> a -> FilePath
+{-# INLINE blobPath #-}
+blobPath cfg pref bid = pref </> pp </> fname
+  where (pp,fname) = innerPath bid
+
 getBlob' :: (Serialize a, InnerPath oid)
          => Blobster
          -> FilePath
@@ -107,8 +119,7 @@ getBlob' :: (Serialize a, InnerPath oid)
          -> IO (Either String a)
 
 getBlob' cfg p oid = do
-  let (pp,fname) = innerPath oid
-  let path = p </> pp </> fname
+  let path = blobPath cfg p oid
   ex <- doesFileExist path
   case ex of
     False -> return (Left (mconcat ["not exists: ", path] ))
@@ -123,10 +134,8 @@ putBlob' :: InnerPath oid
          -> IO ()
 
 putBlob' cfg ow pref oid blob = do
-  let (p,fname) = innerPath oid
-  let pp = pref </> p
-  let path = pp </> fname
-  createDirectoryIfMissing True pp
+  let path = blobPath cfg pref oid
+  createDirectoryIfMissing True (takeDirectory path)
   write <- if ow
              then return True
              else not <$> doesFileExist path
