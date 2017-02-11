@@ -34,10 +34,12 @@ test-suite blobster-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
+  other-modules:       Data.Blobster.BasicSpec
   build-depends:       base
                      , blobster
                      , bytestring
-                     , HUnit
+                     , hspec
+                     , QuickCheck
                      , temporary
 
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
