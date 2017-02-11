@@ -38,6 +38,7 @@ test-suite blobster-test
   build-depends:       base
                      , blobster
                      , bytestring
+                     , cereal
                      , hspec
                      , QuickCheck
                      , temporary
