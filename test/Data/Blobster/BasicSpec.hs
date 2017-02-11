@@ -98,7 +98,7 @@ spec = around withTempDb $ do
 
         withTempDb $ \db1 -> do
           forM_ a $ \(b,_) -> do
-            xferBlob db db1 b
+            xferBlob False db db1 b
 
           o2 <- mapM (getBlob db1 . fst) a
           let o1 = fmap (Right . snd) a

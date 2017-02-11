@@ -100,12 +100,18 @@ putBlob cfg x = do
 getBlob :: Serialize a => Blobster -> BlobID -> IO (Either String a)
 getBlob cfg bid = getBlob' cfg (prefixBlob cfg) bid
 
-xferBlob :: InnerPath a => Blobster -> Blobster -> a -> IO ()
-xferBlob db1 db2 bid = do
+xferBlob :: InnerPath a => Bool -> Blobster -> Blobster -> a -> IO ()
+xferBlob ow db1 db2 bid = do
   let from = blobPath db1 (prefixBlob db1) bid
   let to   = blobPath db2 (prefixBlob db2) bid
-  createDirectoryIfMissing True (takeDirectory to)
-  copyFileWithMetadata from to
+
+  write <- if ow
+             then return True
+             else not  <$> doesFileExist to
+
+  when write $ do
+    createDirectoryIfMissing True (takeDirectory to)
+    copyFileWithMetadata from to
 
 blobPath :: InnerPath a => Blobster -> FilePath -> a -> FilePath
 {-# INLINE blobPath #-}
