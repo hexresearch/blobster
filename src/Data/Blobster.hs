@@ -25,7 +25,6 @@ import qualified Data.ByteArray as BA
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Base16 as Base16
-import qualified Data.Serialize as S
 import qualified Data.Serialize.Get as S
 import qualified Data.Serialize.Put as S
 
@@ -40,10 +39,6 @@ newtype ObjectID = ObjectID { objectID :: ByteString }
 
 newtype ObjectRef = ObjectRef BlobID
                     deriving (Eq,Ord,Generic)
-
-instance Serialize BlobID
-instance Serialize ObjectID
-instance Serialize ObjectRef
 
 deriveSafeCopy 1 'base ''BlobID
 deriveSafeCopy 1 'base ''ObjectID
@@ -94,7 +89,7 @@ putObject :: SafeCopy a => Blobster -> ObjectID -> a -> IO BlobID
 putObject cfg oid o = do
   -- FIXME: exception handling
   bid <- putBlob cfg o
-  _   <- putBlob' cfg True (prefixRef cfg) oid (S.encode (ObjectRef bid))
+  _   <- putBlob' cfg True (prefixRef cfg) oid (S.runPut $ safePut (ObjectRef bid))
   return bid
 
 getObject :: SafeCopy a => Blobster -> ObjectID -> IO (Either String a)
@@ -141,7 +136,7 @@ getBlob' :: (SafeCopy a, InnerPath oid)
 getBlob' cfg p oid = do
   let path = blobPath cfg p oid
   ex <- doesFileExist path
-  if ex
+  if not ex
     then return (Left (mconcat ["not exists: ", path] ))
     else S.runGet safeGet <$> BS.readFile path
 
@@ -159,11 +154,10 @@ putBlob' cfg ow pref oid blob = do
   write <- if ow
              then return True
              else not <$> doesFileExist path
-
   when write $ BS.writeFile path blob
 
-makeObjectID :: Serialize a => a -> ObjectID
-makeObjectID o = ObjectID (hashKey (S.encode o))
+makeObjectID :: SafeCopy a => a -> ObjectID
+makeObjectID o = ObjectID (hashKey (S.runPut $ safePut o))
 
 makeBlobID :: ByteString -> BlobID
 makeBlobID bs = BlobID (hashKey bs)
