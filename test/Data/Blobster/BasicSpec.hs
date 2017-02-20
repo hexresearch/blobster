@@ -8,11 +8,13 @@ import Data.Blobster
 import Control.Exception
 import Control.Monad
 import Data.ByteString (ByteString)
+import Data.Maybe (fromMaybe)
 import Data.SafeCopy
 import Data.Serialize
 import Data.String
 import GHC.Generics
 import System.IO.Temp
+import Text.Read (readMaybe)
 
 import qualified Data.ByteString as BS
 
@@ -29,8 +31,44 @@ data CustomDataExample = CustomDataExample { name :: String
                                            , someEnum :: [CustomEnum]
                                            } deriving (Show,Eq,Ord,Generic)
 
-deriveSafeCopy 1 'base ''CustomDataExample
+data NewCustomDataExample1 = NewCustomDataExample1 { new1Name     :: String
+                                                   , new1Age      :: Int
+                                                   , new1SomeData :: [Int]
+                                                   , new1SomeEnum :: [CustomEnum]
+                                                   , new1Field    :: String
+                                                   } deriving (Show, Eq, Ord, Generic)
+
+data NewCustomDataExample2 = NewCustomDataExample2 { new2Name     :: String
+                                                   , new2Age      :: Int
+                                                   , new2SomeData :: [Int]
+                                                   , new2SomeEnum :: [CustomEnum]
+                                                   , new2Field    :: Int
+                                                   } deriving (Show, Eq, Ord, Generic)
+
+instance Migrate NewCustomDataExample1 where
+  type MigrateFrom NewCustomDataExample1 = CustomDataExample
+  migrate CustomDataExample{..} = NewCustomDataExample1 {
+      new1Name = name
+    , new1Age  = age
+    , new1SomeData = someData
+    , new1SomeEnum = someEnum
+    , new1Field = "42"
+    }
+
+instance Migrate NewCustomDataExample2 where
+  type MigrateFrom NewCustomDataExample2 = NewCustomDataExample1
+  migrate NewCustomDataExample1{..} = NewCustomDataExample2 {
+      new2Name = new1Name
+    , new2Age  = new1Age
+    , new2SomeData = new1SomeData
+    , new2SomeEnum = new1SomeEnum
+    , new2Field = fromMaybe 0 $ readMaybe new1Field
+    }
+
 deriveSafeCopy 1 'base ''CustomEnum
+deriveSafeCopy 1 'base ''CustomDataExample
+deriveSafeCopy 2 'extension ''NewCustomDataExample1
+deriveSafeCopy 3 'extension ''NewCustomDataExample2
 
 instance Arbitrary ObjectID where
   arbitrary = makeObjectID <$> (BS.pack <$> arbitrary)
@@ -43,6 +81,13 @@ instance Arbitrary CustomDataExample where
                                 <*> arbitrary
                                 <*> arbitrary
                                 <*> arbitrary
+
+instance Arbitrary NewCustomDataExample1 where
+  arbitrary = NewCustomDataExample1 <$> arbitrary
+                                    <*> arbitrary
+                                    <*> arbitrary
+                                    <*> arbitrary
+                                    <*> arbitrary
 
 withTempDb  fn =
   withSystemTempDirectory "blobster-spec" $ \s -> makeDir s >>= fn
@@ -99,6 +144,30 @@ spec = around withTempDb $ do
 
         o2 `shouldBe` o1
 
+  describe "migration" $ do
+    it "Migrates from basic format" $ \db ->
+      replicateM_ 100 $ do
+        oid <- generate arbitrary :: IO ObjectID
+        o <- generate arbitrary :: IO CustomDataExample
+        putObject db oid o
+        o' <- getObject db oid :: IO (Either String NewCustomDataExample1)
+        o' `shouldBe` Right (migrate o)
+
+    it "Migrates from extended format" $ \db ->
+      replicateM_ 100 $ do
+        oid <- generate arbitrary :: IO ObjectID
+        o <- generate arbitrary :: IO NewCustomDataExample1
+        putObject db oid o
+        o' <- getObject db oid :: IO (Either String NewCustomDataExample2)
+        o' `shouldBe` Right (migrate o)
+
+    it "Migrates from base to last format" $ \db ->
+      replicateM_ 100 $ do
+        oid <- generate arbitrary :: IO ObjectID
+        o <- generate arbitrary :: IO CustomDataExample
+        putObject db oid o
+        o' <- getObject db oid :: IO (Either String NewCustomDataExample2)
+        o' `shouldBe` Right (migrate $ migrate o)
 
 main :: IO ()
 main = hspec spec
