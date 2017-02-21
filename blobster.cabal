@@ -1,34 +1,37 @@
 name:                blobster
-version:             0.2.0.0
-synopsis:            Initial project template from stack
+version:             0.3.0.0
+synopsis:            Simple storage of objects as blobs in files.
 description:         Please see README.md
-homepage:            https://github.com/githubuser/blobster#readme
+homepage:            https://github.com/voidlizard/blobster#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Dmitry Zuikov 
-maintainer:          dzuikov@gmil.com 
+author:              Dmitry Zuikov, Anton Gushcha
+maintainer:          dzuikov@gmil.com
 copyright:           2017 Dmitry Zuikov
 category:            Data
 build-type:          Simple
 extra-source-files:  README.md
+                     CHANGELOG.md
 cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Data.Blobster 
-  build-depends:       base >= 4.7 && < 5
-                     , base16-bytestring
-                     , bytestring
-                     , cereal
-                     , cryptonite
-                     , directory
-                     , filepath
-                     , memory
+  exposed-modules:     Data.Blobster
+  build-depends:       base                >= 4.7  && < 5
+                     , base16-bytestring   >= 0.1  && < 0.2
+                     , bytestring          >= 0.10 && < 0.11
+                     , cereal              >= 0.5  && < 0.6
+                     , cryptonite          >= 0.21 && < 0.22
+                     , directory           >= 1.2  && < 1.4
+                     , filepath            >= 1.4  && < 1.5
+                     , memory              >= 0.13 && < 0.15
+                     , safecopy            >= 0.9  && < 0.10
 
   default-language:    Haskell2010
 
   default-extensions:
     OverloadedStrings
+    TemplateHaskell
 
 test-suite blobster-test
   type:                exitcode-stdio-1.0
@@ -41,14 +44,17 @@ test-suite blobster-test
                      , cereal
                      , hspec
                      , QuickCheck
+                     , safecopy
                      , temporary
 
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
   default-extensions:
     OverloadedStrings
+    RecordWildCards
+    TemplateHaskell
+    TypeFamilies
 
 source-repository head
   type:     git
   location: https://github.com/voidlizard/blobster
-
