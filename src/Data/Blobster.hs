@@ -13,6 +13,7 @@ module Data.Blobster ( BlobID(..)
                      , Materialize(..)
                      , MaterializedEntry(..)
                      , materialize
+                     , materialize'
                      , dematerialize
                      ) where
 
@@ -31,31 +32,41 @@ class SafeCopy (ValueOf a) => Materialize a where
   toEntry   :: a -> MaterializedEntry (ValueOf a)
   fromEntry :: MaterializedEntry (ValueOf a) -> Maybe a
 
+-- FIXME: rewrite boilerplate
 materialize :: forall a m . (MonadIO m, Materialize a)
             => Blobster
             -> a
             -> m (Either String a)
 
-materialize db x =
+materialize db x = do
+  v <- materialize' db x
   case toEntry x of
-    EntryIndexed (Just oid) Nothing -> do
-      e <- (liftIO (getObject db oid :: IO (Either String (ValueOf a))))
-      return $  e >>= fromEntry' . EntryIndexed (Just oid) . Just
-
-    EntryIndexed i e@(Just _) -> return $ fromEntry' (EntryIndexed i e)
-
-    EntryDirect (Just oid) Nothing -> do
-      e <- (liftIO (getBlob db oid :: IO (Either String (ValueOf a))))
-      return $ e >>= fromEntry' . EntryDirect (Just oid) . Just
-
-    EntryDirect i e@(Just _) -> return $ fromEntry' (EntryDirect i e)
-
-    EntryIndexed Nothing Nothing -> return $ Left "Entry key not specified"
-    EntryDirect Nothing Nothing -> return $ Left "Entry key not specified"
-
+    EntryIndexed i _ -> return (v >>= fromEntry' . EntryIndexed i . pure)
+    EntryDirect i _  -> return (v >>= fromEntry' . EntryDirect i . pure)
 
   where
     fromEntry' a = maybe (Left "not representable") (Right) (fromEntry a)
+
+materialize' :: forall a m . (MonadIO m, Materialize a)
+            => Blobster
+            -> a
+            -> m (Either String (ValueOf a))
+materialize' db x =
+  case toEntry x of
+    EntryIndexed (Just oid) Nothing -> do
+      e <- (liftIO (getObject db oid :: IO (Either String (ValueOf a))))
+      return e
+
+    EntryIndexed i e@(Just v) -> return (Right v)
+
+    EntryDirect (Just oid) Nothing -> do
+      e <- (liftIO (getBlob db oid :: IO (Either String (ValueOf a))))
+      return e
+
+    EntryDirect i e@(Just v) -> return (Right v)
+
+    EntryIndexed Nothing Nothing -> return $ Left "Entry key not specified"
+    EntryDirect Nothing Nothing -> return $ Left "Entry key not specified"
 
 
 dematerialize :: forall a m . (MonadIO m, Materialize a)
