@@ -1,3 +1,8 @@
+0.3.0.1
+=======
+
+* Materialize typeclass (API unstable yet)
+
 0.3.0.0
 =======
 

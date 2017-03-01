@@ -1,5 +1,5 @@
 name:                blobster
-version:             0.3.0.0
+version:             0.3.0.1
 synopsis:            Simple storage of objects as blobs in files.
 description:         Please see README.md
 homepage:            https://github.com/voidlizard/blobster#readme
@@ -17,6 +17,8 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Data.Blobster
+  other-modules:       Data.Blobster.Internal
+
   build-depends:       base                >= 4.7  && < 5
                      , base16-bytestring   >= 0.1  && < 0.2
                      , bytestring          >= 0.10 && < 0.11
