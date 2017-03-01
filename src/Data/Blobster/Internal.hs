@@ -26,7 +26,7 @@ class InnerPath a where
   innerPath :: a -> (FilePath, FilePath)
 
 newtype BlobID = BlobID { blobID :: ByteString }
-                 deriving (Eq,Ord,Generic)
+                 deriving (Eq,Ord,Data,Generic)
 
 newtype ObjectID = ObjectID { objectID :: ByteString }
                    deriving (Eq,Ord,Data,Generic)

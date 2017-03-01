@@ -1,3 +1,8 @@
+0.3.0.3
+=======
+
+* Data instance for BlobID 
+
 0.3.0.2
 =======
 
