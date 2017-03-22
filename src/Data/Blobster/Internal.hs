@@ -13,7 +13,6 @@ import Data.Serialize (Serialize)
 import GHC.Generics
 import System.Directory
 import System.FilePath
-import System.FilePath.Posix
 
 import qualified Data.ByteArray as BA
 import qualified Data.ByteString as BS
