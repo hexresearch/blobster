@@ -1,5 +1,5 @@
 name:                blobster
-version:             0.3.0.3
+version:             0.5.0.0
 synopsis:            Simple storage of objects as blobs in files.
 description:         Please see README.md
 homepage:            https://github.com/voidlizard/blobster#readme
@@ -23,7 +23,7 @@ library
                      , base16-bytestring   >= 0.1  && < 0.2
                      , bytestring          >= 0.10 && < 0.11
                      , cereal              >= 0.5  && < 0.6
-                     , cryptonite          >= 0.21 && < 0.22
+                     , cryptonite          >= 0.21 && < 0.24
                      , directory           >= 1.2  && < 1.4
                      , filepath            >= 1.4  && < 1.5
                      , memory              >= 0.13 && < 0.15
